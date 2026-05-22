@@ -1,9 +1,6 @@
-version: "3.8"
-
 services:
   frontend:
-    build: ./frontend
-    image: tu_usuario_dockerhub/tienda-frontend:latest
+    image: vavila999/tienda-frontend:latest
     container_name: tienda-frontend
     ports:
       - "8080:80"
@@ -11,8 +8,7 @@ services:
       - backend
 
   backend:
-    build: ./backend
-    image: tu_usuario_dockerhub/tienda-backend:latest
+    image: vavila999/tienda-backend:latest
     container_name: tienda-backend
     environment:
       DB_HOST: db
