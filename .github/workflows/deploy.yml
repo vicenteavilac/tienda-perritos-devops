@@ -1,0 +1,53 @@
+name: CI/CD Tienda Perritos DuocUC
+
+on:
+  push:
+    branches:
+      - main  # Se activa automáticamente cuando haces push a la rama main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar codigo del repositorio
+        uses: actions/checkout@v3
+
+      - name: Iniciar sesion en Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Construir y Subir Imagenes a Docker Hub
+        run: |
+          docker build -t vavila999/tienda-frontend:latest ./frontend
+          docker build -t vavila999/tienda-backend:latest ./backend
+          docker push vavila999/tienda-frontend:latest
+          docker push vavila999/tienda-backend:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Conectarse a EC2 y Actualizar Contenedores
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p tienda-perritos
+            cd tienda-perritos
+            
+            # Descargar solo el archivo docker-compose y la inicializacion de la BD
+            curl -o docker-compose.yml https://raw.githubusercontent/${{ github.repository }}/main/docker-compose.yml
+            mkdir -p db
+            curl -o db/init.sql https://raw.githubusercontent/${{ github.repository }}/main/db/init.sql
+            
+            # Iniciar sesion en el Docker del EC2
+            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+            
+            # Apagar lo viejo, descargar lo nuevo y encender
+            docker-compose down
+            docker-compose pull
+            docker-compose up -d
