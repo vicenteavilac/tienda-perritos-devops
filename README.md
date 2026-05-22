@@ -1,54 +1,13 @@
-# Tienda de Alimentos para Perritos 🐶
+# 🐾 Tienda de Perritos - Arquitectura Multicapa & Pipeline CI/CD Automatizado
 
-Aplicación de ejemplo en 3 capas usando Docker y Docker Compose:
+Este repositorio contiene la solución completa de ingeniería para la aplicación multicapa **"Tienda de Perritos"**, diseñada y desplegada bajo principios de la cultura **DevOps**. La arquitectura transiciona un entorno monolítico local tradicional hacia un ecosistema de microservicios inmutables, contenerizados y orquestados de manera automática en la nube utilizando **Amazon Web Services (AWS)**, **Docker**, **Docker Compose** y **GitHub Actions**.
 
-- Frontend: HTML + JavaScript (Nginx)
-- Backend: Node.js + Express
-- Base de datos: MySQL
+---
 
-## Requisitos
+## 🚀 Arquitectura del Sistema y Componentes
 
-- Docker Desktop instalado
+El ecosistema se encuentra desacoplado en tres capas lógicas totalmente aisladas e interconectadas mediante redes virtuales internas administradas por Docker:
 
-## Estructura del proyecto
-
-```text
-.
-├── docker-compose.yml
-├── frontend
-│   ├── Dockerfile
-│   ├── index.html
-│   └── app.js
-├── backend
-│   ├── Dockerfile
-│   ├── package.json
-│   └── server.js
-└── db
-    └── init.sql
-```
-
-## Cómo ejecutar
-
-1. Abrir una terminal en la carpeta del proyecto
-2. Ejecutar:
-
-```bash
-docker compose build
-docker compose up -d
-```
-
-3. Abrir en el navegador:
-
-- Frontend: http://localhost:8080
-- Backend (API): http://localhost:3001/api/productos
-
-4. Para detener los contenedores:
-
-```bash
-docker compose down
-```
-
-## Notas
-
-- La base de datos se inicializa automáticamente con el script `db/init.sql` en el primer arranque.
-- Puedes modificar el frontend y backend, reconstruir y volver a levantar los contenedores.
+1. **Frontend (Puerto 8080):** Interfaz de usuario responsiva desarrollada en JavaScript Vanilla, optimizada para el consumo asíncrono de la API REST mediante peticiones dinámicas basadas en el hostname de conexión.
+2. **Backend (Puerto 3001):** API RESTful encargada de la lógica de negocio, enrutamiento, validación sintáctica de datos y persistencia intermedia, interactuando nativamente con el motor relacional.
+3. **Database (Puerto 3306 - Interno):** Motor de base de datos relacional **MySQL 8**. Cuenta con aislamiento perimetral (no expuesto a Internet) para salvaguardar la integridad de los registros.
