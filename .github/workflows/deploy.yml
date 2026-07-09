@@ -3,7 +3,7 @@ name: CI/CD Tienda Perritos DuocUC
 on:
   push:
     branches:
-      - main  # Se activa automáticamente cuando haces push a la rama main
+      - deploy  # Se activa automáticamente cuando haces push a la rama main
 
 jobs:
   build-and-push:
