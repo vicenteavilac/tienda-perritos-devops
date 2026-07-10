@@ -1,63 +1,67 @@
-name: CI/CD Tienda Perritos DuocUC
+name: CI/CD Pipeline - Tienda de Perritos
 
+# El pipeline solo se ejecuta cuando se hace un push a la rama main (entrega final)
 on:
   push:
     branches:
-      - deploy  # Se activa automáticamente cuando haces push a la rama main
+      - main
 
 jobs:
-  build-and-push:
+  build-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Descargar codigo del repositorio
-        uses: actions/checkout@v3
+    # 1. Clonar el código del repositorio en el servidor de GitHub
+    - name: Checkout Code
+      uses: actions/checkout@v4
 
-      - name: Iniciar sesion en Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+    # 2. Configurar las credenciales de AWS Academy (Usa el Token temporal)
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: us-east-1
 
-      - name: Construir y Subir Imagenes a Docker Hub
-        run: |
-          docker build -t vavila999/tienda-frontend:latest ./frontend
-          docker build -t vavila999/tienda-backend:latest ./backend
-          docker push vavila999/tienda-frontend:latest
-          docker push vavila999/tienda-backend:latest
+    # 3. Autenticar Docker con Amazon ECR
+          name: Login to Amazon ECR
+          id: login-ecr
+          uses: aws-actions/amazon-ecr-login@v2
 
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    steps:
-      - name: Descargar codigo del repositorio para despliegue
-        uses: actions/checkout@v3
+    # 4. Compilar y subir la imagen del Backend a ECR (Usando la variable del login)
+    - name: Build and Push Backend Image
+      run: |
+        docker build -t 696089101526.dkr.ecr.us-east-1.amazonaws.com/tienda-backend:latest ./backend
+        docker push 696089101526.dkr.ecr.us-east-1.amazonaws.com/tienda-backend:latest
 
-      - name: Copiar archivos de configuracion a la EC2 por SCP
-        uses: appleboy/scp-action@v0.1.4
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,db/init.sql"
-          target: "/home/ubuntu/tienda-perritos"
+    # 5. Compilar y subir la imagen del Frontend a ECR
+    - name: Build and Push Frontend Image
+      run: |
+        docker build -t 696089101526.dkr.ecr.us-east-1.amazonaws.com/tienda-frontend:latest ./frontend
+        docker push 696089101526.dkr.ecr.us-east-1.amazonaws.com/tienda-frontend:latest
 
-      - name: Conectarse a EC2 y Actualizar Contenedores
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            cd /home/ubuntu/tienda-perritos
-            
-            # Iniciar sesion en el Docker del EC2
-            echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            
-            # Apagar lo viejo usando el comando moderno (sin guion medio)
-            docker compose down
-            
-            # Descargar las imagenes nuevas de Docker Hub
-            docker compose pull
-            
-            # Levantar todo de nuevo
-            docker compose up -d
+    # 6. Configurar herramientas de Kubernetes (kubectl)
+    - name: Setup Kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.35.4'
+
+    # 7. Conectarse al clúster de AWS Academy
+    - name: Update Kubeconfig
+      run: |
+        aws eks update-kubeconfig --region us-east-1 --name tienda-cluster
+
+    # 8. Desplegar los archivos YAML modificados en el clúster
+    - name: Deploy to EKS
+      run: |
+        kubectl apply -f k8s/mysql-db.yaml
+        kubectl apply -f k8s/backend.yaml
+        kubectl apply -f k8s/frontend.yaml
+        kubectl apply -f k8s/hpa.yaml
+
+    # 9. Forzar a Kubernetes a refrescar los contenedores con las nuevas imágenes
+    - name: Force Rollout Restart
+      run: |
+        kubectl rollout restart deployment/backend
+        kubectl rollout restart deployment/frontend
