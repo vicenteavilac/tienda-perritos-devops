@@ -1,4 +1,4 @@
-name: CI/CD Pipeline - Tienda de Perritos
+name: CI/CD Pipeline - Tienda de Perritos EFT
 
 # El pipeline solo se ejecuta cuando se hace un push a la rama main (entrega final)
 on:
